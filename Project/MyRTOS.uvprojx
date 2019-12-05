@@ -397,6 +397,16 @@
               <FileType>1</FileType>
               <FilePath>..\MyRTOS\list.c</FilePath>
             </File>
+            <File>
+              <FileName>task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\MyRTOS\task.c</FilePath>
+            </File>
+            <File>
+              <FileName>port.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\MyRTOS\port.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

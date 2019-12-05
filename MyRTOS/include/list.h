@@ -42,7 +42,7 @@ typedef struct xLIST
 */
 /*初始化节点拥有者*/
 #define listSET_LIST_ITEM_OWNER( pxListItem, pxOwner )\
-				( ( pxListItem )->pvOwner = ( void * ) ( pxOnwer ) )
+				( ( pxListItem )->pvOwner = ( void * ) ( pxOwner ) )
 	
 /*获取节点拥有者*/
 #define listGET_LIST_ITEM_OWNER( pxListItem)\
