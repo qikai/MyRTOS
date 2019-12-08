@@ -1,10 +1,14 @@
 #include "task.h"
-#include "projdefs.h"
 #include "list.h"
 #include "portable.h"
 
-TCB_t Task1TCB; 
-TCB_t Task2TCB;
+/*全局指针，用于指向当前正在运行或者即将要运行的任务的任务控制块*/
+TCB_t *pxCurrentTCB=NULL;  
+
+extern TCB_t Task1TCB; 
+extern TCB_t Task2TCB;
+ 
+List_t pxReadyTasksLists[configMAX_PRIORITIES];
 
 void prvInitialiseNewtask( TaskFunction_t pxTaskCode,
 	                                const char * const pcName,
@@ -58,7 +62,7 @@ static void prvInitialiseNewtask( TaskFunction_t pxTaskCode,
 	StackType_t *pxTopOfStack;
 	UBaseType_t x;
 	
-	/*获取栈顶地址*/
+	/*获取栈顶地址, 四字节一个单位*/
 	pxTopOfStack = pxNewTCB->pxStack + ( ulStackDepth - ( uint32_t ) 1);
 	
 	/*向下做8字节对齐,因为栈是从高往低生长的所以向下，因为要兼容浮点运算，所以要8字节对齐*/
@@ -98,6 +102,49 @@ static void prvInitialiseNewtask( TaskFunction_t pxTaskCode,
 }
 
 
+/*就绪列表初始化*/
+void prvInitialiseTaskLists(void)
+{
+	UBaseType_t uxPriority;
+	
+	for( uxPriority = ( UBaseType_t ) 0U;
+	     uxPriority < ( UBaseType_t) configMAX_PRIORITIES;
+	     uxPriority++)
+	{ 
+		vListInitialise( &( pxReadyTasksLists[uxPriority] ) );
+	}
+}
+
+
+//=================================================
+//								调度器
+//=================================================
+
+//启动调度器
+void vTaskStartScheduler( void )
+{
+	/*手动指定第一个运行的任务，目前还不支持优先级，手动指定*/
+	pxCurrentTCB = &Task1TCB;
+	
+	/*启动调度器*/
+	if( xPortStartScheduler() != pdFALSE)
+	{
+		/*调度器启动成功，则不会返回，即不会来到这里*/
+	}
+}
+
+void vTaskSwitchContext(void)
+{
+	/*两个任务轮流切换*/
+	if( pxCurrentTCB == &Task1TCB)
+	{
+		pxCurrentTCB = &Task2TCB;
+	}
+	else
+	{
+		pxCurrentTCB = &Task1TCB;
+	}
+}
 
 
 

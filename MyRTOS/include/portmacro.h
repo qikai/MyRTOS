@@ -26,4 +26,31 @@ typedef uint32_t TickType_t;
 #define portMAX_DELAY ( TickType_t ) 0xffffffffUL 
 #endif 
 
+
+/*
+中断控制状态寄存器：0xe000ed04
+BIT 28 PENDSVSET:PendSV 悬起位
+*/
+#define portNVIC_INT_CTRL_REG		(*(( volatile uint32_t *) 0xe000ed04))
+#define portNVIC_PENDSVSET_BIT   (1UL << 28UL)
+
+#define portSY_FULL_READ_WRITE   ( 15 )
+
+
+/*
+：portYIELD 的实现很简单，实际就是将 PendSV 的悬起位置 1，当
+没有其它中断运行的时候响应 PendSV 中断，去执行我们写好的 PendSV 
+中断服务函数，在里面实现任务切换。
+*/
+#define portYIELD()                                     \
+{                                                       \
+	/*触发PendSV, 产生上下文切换*/                         \
+	portNVIC_INT_CTRL_REG = portNVIC_PENDSVSET_BIT;       \
+	__dsb( portSY_FULL_READ_WRITE );                      \
+	__isb( portSY_FULL_READ_WRITE );                      \
+}
+
+
+
+
 #endif

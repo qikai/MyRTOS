@@ -99,7 +99,7 @@ typedef struct xLIST
 
 
 void vListInitialiseItem( ListItem_t * const pxItem );
-void vListInitialize(List_t * const pxList);
+void vListInitialise(List_t * const pxList);
 void vListInsertEnd( List_t * const pxList, ListItem_t * const pxNewListItem);
 void vListInsert( List_t * const pxList, ListItem_t * const pxNewListItem );
 UBaseType_t uxListRemove( ListItem_t * const pxItemToRemove );
