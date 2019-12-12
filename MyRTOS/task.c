@@ -2,12 +2,23 @@
 #include "list.h"
 #include "portable.h"
 
+
 /*全局指针，用于指向当前正在运行或者即将要运行的任务的任务控制块*/
 TCB_t *pxCurrentTCB=NULL;  
 
+TaskHandle_t xIdleTaskHandle;
+
 extern TCB_t Task1TCB; 
 extern TCB_t Task2TCB;
- 
+extern TCB_t IdleTaskTCB;
+extern TickType_t xTickCount;
+
+void vApplicationGetIdleTaskMemory(TCB_t **ppxIdleTaskTCBBuffer,
+	                                 StackType_t **ppxIdleTaskStackBuffer,
+                                   uint32_t *pulIdleTaskStackSize);
+
+void prvIdleTask(void *p_arg);
+
 List_t pxReadyTasksLists[configMAX_PRIORITIES];
 
 void prvInitialiseNewtask( TaskFunction_t pxTaskCode,
@@ -32,7 +43,7 @@ TaskHandle_t xTaskCreateStatic( TaskFunction_t pxTaskCode,
 	if( ( pxTaskBuffer  != NULL ) && ( puxStackBuffer != NULL ))
 	{
 		pxNewTCB = ( TCB_t *) pxTaskBuffer;
-		pxNewTCB->pxStack = ( StackType_t * ) puxStackBuffer;
+		pxNewTCB->pxStack = ( StackType_t * ) puxStackBuffer; //将任务控制块中的栈指针指向分配的栈
 		
 		/*创建新的任务*/
 		prvInitialiseNewtask(pxTaskCode,	       /*任务入口*/
@@ -123,16 +134,41 @@ void prvInitialiseTaskLists(void)
 //启动调度器
 void vTaskStartScheduler( void )
 {
+	/*=============创建空闲任务start================*/
+	TCB_t *pxIdleTaskTCBBuffer = NULL;          /*用于指向空闲任务控制块*/
+	StackType_t *pxIdleTaskStackBuffer = NULL;  /*用于空闲任务栈起始地址*/
+	uint32_t  ulIdleTaskStackSize;
+	
+	/*获取空闲任务的内存：任务栈和任务TCB*/
+	vApplicationGetIdleTaskMemory(&pxIdleTaskTCBBuffer,
+	                              &pxIdleTaskStackBuffer,
+	                              &ulIdleTaskStackSize);
+	
+	/*创建空闲任务*/
+	xIdleTaskHandle =
+	xTaskCreateStatic((TaskFunction_t)prvIdleTask,           /*任务入口*/
+	                  (char *)"IDLE",                        /*任务名字，字符串形式*/
+										(uint32_t)ulIdleTaskStackSize,         /*任务栈大小，单位为字*/
+										(void *)NULL,                          /*任务形参*/
+										(StackType_t *)pxIdleTaskStackBuffer,  /*任务栈起始地址*/
+										(TCB_t *)pxIdleTaskTCBBuffer);         /*任务控制块*/
+
+	/*将任务添加到就绪列表里*/
+	vListInsertEnd(&(pxReadyTasksLists[0]),
+									&(((TCB_t *)pxIdleTaskTCBBuffer)->xStateListItem));
+	/*============= 创建空闲任务end ================*/
+	
 	/*手动指定第一个运行的任务，目前还不支持优先级，手动指定*/
 	pxCurrentTCB = &Task1TCB;
-	
+		
 	/*启动调度器*/
 	if( xPortStartScheduler() != pdFALSE)
 	{
 		/*调度器启动成功，则不会返回，即不会来到这里*/
 	}
+	
 }
-
+#if 0
 void vTaskSwitchContext(void)
 {
 	/*两个任务轮流切换*/
@@ -145,7 +181,115 @@ void vTaskSwitchContext(void)
 		pxCurrentTCB = &Task1TCB;
 	}
 }
+#else
+void vTaskSwitchContext(void)
+{
+	/*
+	*/
+	if(pxCurrentTCB == &IdleTaskTCB)
+	{
+		if(Task1TCB.xTicksToDelay == 0)
+		{
+			pxCurrentTCB = &Task1TCB;
+		}
+		else if(Task2TCB.xTicksToDelay == 0)
+		{
+			pxCurrentTCB = &Task2TCB;
+		}
+		else
+		{
+			return;  /*任务延时均没有到期则返回，继续执行空闲任务*/
+		}
+	}
+	else         /*当前任务不是空闲任务*/
+	{
+		if(pxCurrentTCB == &Task1TCB)
+		{
+			if(Task2TCB.xTicksToDelay == 0)
+			{
+				pxCurrentTCB = &Task2TCB;
+			}
+			else if(pxCurrentTCB->xTicksToDelay != 0)  /*非空闲任务调用了vTaskDelay*/
+			{
+				pxCurrentTCB = &IdleTaskTCB;
+			}
+			else
+			{
+				return;  /*返回，不进行切换，因为两个任务都在延时中*/
+			}
+		}
+		else if(pxCurrentTCB == &Task2TCB)
+		{
+			if(Task1TCB.xTicksToDelay == 0)
+			{
+				pxCurrentTCB = &Task1TCB;
+			}
+			else if(pxCurrentTCB->xTicksToDelay != 0)
+			{
+				pxCurrentTCB = &IdleTaskTCB;
+			}
+			else
+			{
+				return;
+			}
+		}
+	}
+}
+#endif
 
+/*===========空闲任务===========*/
+void prvIdleTask(void *p_arg)
+{
+	while(1)
+	{
+		
+	}
+}
+
+
+
+
+
+/*==========任务阻塞延时============*/
+void vTaskDelay(const TickType_t xTicksToDelay)
+{
+	TCB_t *pxTCB = NULL;
+	
+	/*获取当前任务的TCB*/
+	pxTCB = pxCurrentTCB;
+	
+	/*设置延时时间, 单位为 SysTick 的中断周期*/
+	pxTCB->xTicksToDelay = xTicksToDelay;
+	
+	/*调用PendSV中断 任务切换*/
+	taskYIELD();
+}
+
+
+/*==========更新系统时基============*/
+void xTaskIncrementTick(void)
+{
+	TCB_t *pxTCB = NULL;
+	BaseType_t i = 0;
+	
+	/*更新系统时基计数器xTickCount, 这是一个port.c中的全局变量*/
+	const TickType_t xConstTickCount = xTickCount + 1;
+	
+	xTickCount = xConstTickCount;
+	
+	/*扫描就绪列表中所有任务的xTicksToDelay，如果不为0，则减1*/
+	for(i = 0; i < configMAX_PRIORITIES; i++)
+	{
+		pxTCB = (TCB_t *) listGET_OWNER_OF_HEAD_ENTRY( ( &pxReadyTasksLists[i] ) );
+		if(pxTCB->xTicksToDelay > 0)
+		{
+			pxTCB->xTicksToDelay --;
+		}
+	}
+	
+	/*任务切换*/
+	portYIELD();
+}
 
 
 

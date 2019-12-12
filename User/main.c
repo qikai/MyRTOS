@@ -2,6 +2,7 @@
 #include "list.h"
 #include "task.h"
 
+
 portCHAR flag1;
 portCHAR flag2;
 
@@ -19,6 +20,11 @@ StackType_t Task1Stack[TASK1_STACK_SIZE];
 #define TASK2_STACK_SIZE			128
 StackType_t Task2Stack[TASK2_STACK_SIZE];
 
+
+StackType_t IdleTaskStack[configMINIMAL_STACK_SIZE];
+/*定义空闲任务的任务控制块*/
+TCB_t IdleTaskTCB;
+
 /*软件延时*/
 void delay(uint32_t count)
 {
@@ -30,11 +36,18 @@ void Task1_Entry(void *p_arg)
 {
 	for(;;)
 	{
+#if 0
 		flag1 = 1;
 		delay(100);
 		flag1 = 0;
 		delay(100);
 		taskYIELD();
+#else
+		flag1 = 1;
+		vTaskDelay(100);
+		flag1 = 0;
+		vTaskDelay(100);
+#endif
 	}
 }
 
@@ -43,11 +56,18 @@ void Task2_Entry(void *p_arg)
 {
 	for(;;)
 	{
+#if 0
 		flag2 = 1;
 		delay(100);
 		flag2 = 0;
 		delay(100);
 		taskYIELD();
+#else
+		flag2 = 1;
+		vTaskDelay(100);
+		flag2 = 0;
+		vTaskDelay(100);
+#endif
 	}
 }
 
@@ -83,3 +103,16 @@ int main(void)
 																		
 	while(1);//do something
 }
+
+
+void vApplicationGetIdleTaskMemory(TCB_t **ppxIdleTaskTCBBuffer,
+	                                 StackType_t **ppxIdleTaskStackBuffer,
+                                   uint32_t *pulIdleTaskStackSize)
+{
+	*ppxIdleTaskTCBBuffer = &IdleTaskTCB;
+	*ppxIdleTaskStackBuffer = IdleTaskStack;
+	*pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+}
+
+
+

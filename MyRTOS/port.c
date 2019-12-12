@@ -3,8 +3,16 @@
 
 #define portINITIAL_XPSR					(0x01000000)
 #define portSTART_ADDRESS_MASK    ( ( StackType_t ) 0xfffffffeUL)
+/* Masks off all bits but the VECTACTIVE bits in the ICSR register. */
+#define portVECTACTIVE_MASK					( 0xFFUL )
 
+TickType_t xTickCount;
 
+/* Each task maintains its own interrupt status in the critical nesting
+variable. */
+static UBaseType_t uxCriticalNesting = 0xaaaaaaaa;
+
+void vPortSetupTimerInterrupt(void);
 void prvStartFirstTask( void );
 
 static void prvTaskExitError( void )
@@ -48,8 +56,15 @@ BaseType_t xPortStartScheduler(void)
 	portNVIC_SYSPRI2_REG |= portNVIC_PENDSV_PRI;
 	portNVIC_SYSPRI2_REG |= portNVIC_SYSTICK_PRI;
 	
+	/*初始化SysTick*/
+	vPortSetupTimerInterrupt();
+	
 	/*启动第一个任务，不再返回*/
 	prvStartFirstTask();
+	
+	
+	/* Initialise the critical nesting count ready for the first task. */
+	uxCriticalNesting = 0;
 	
 	/*不应该运行到这里*/
 	return 0;
@@ -82,7 +97,7 @@ __asm void prvStartFirstTask( void )
 	/*调用SVC去启动第一个任务*/
 	/*The SVC instruction causes the SVC exception. 
 	imm is ignored by the processor*/
-	svc 0	
+	svc 0	               //后面的立即数在操作系统里可以用作参数
 	nop
 	nop	
 	
@@ -173,6 +188,86 @@ __asm void xPortPendSVHandler(void)
 	nop
 	
 }
+
+
+/*===========进入临界段，不带中断保护，不能嵌套=====================*/
+void vPortEnnterCritical( void )
+{
+	portDISABLE_INTERRUPTS();
+	uxCriticalNesting++;
+	
+  /*如果 uxCriticalNesting 等于 1，即一层嵌套，要确保当前没有中断活
+  跃，即内核外设 SCB 中的中断和控制寄存器 SCB_ICSR 的低 8 位要等于 0 */
+	if(uxCriticalNesting == 1)
+	{ 
+		configASSERT((portNVIC_INT_CTRL_REG & portVECTACTIVE_MASK) == 0);
+	}
+}
+
+/*=================退出临界段，不带中断保护，不可以嵌套=================*/
+void vPortExitCritical( void )
+{
+	configASSERT( uxCriticalNesting );
+	uxCriticalNesting--;
+	if(uxCriticalNesting == 0)
+	{
+		portENABLE_INTERRUPTS();
+	}
+}
+
+
+/*SysTick控制寄存器*/
+#define portNVIC_SYSTICK_CTRL_REG  (*((volatile uint32_t *)0xe000e010))
+/*SysTick重装载寄存器*/
+#define portNVIC_SYSTICK_LOAD_REG  (*((volatile uint32_t *)0xe000e014))
+	
+/*SysTick时钟源选择*/
+#ifndef configSYSTICK_CLOCK_HZ
+   #define configSYSTICK_CLOCK_HZ configCPU_CLOCK_HZ
+   #define portNVIC_SYSTICK_CLK_BIT    (1UL << 2UL)
+#else
+   #define portNVIC_SYSTICK_CLK_BIT    ( 0 )
+#endif
+
+#define portNVIC_SYSTICK_INT_BIT 						( 1UL << 1UL )
+#define portNVIC_SYSTICK_ENABLE_BIT         ( 1UL << 0UL )
+
+void vPortSetupTimerInterrupt(void)
+{
+	/*设置重装载寄存器的值*/
+	portNVIC_SYSTICK_LOAD_REG = ( configSYSTICK_CLOCK_HZ / configTICK_RATE_HZ ) - 1UL;
+	
+	/*
+	设置系统定时器的时钟等于内核时钟
+	使能SysTick定时器中断
+	使能SysTick定时器
+	*/
+	portNVIC_SYSTICK_CTRL_REG = (portNVIC_SYSTICK_CLK_BIT |
+	                             portNVIC_SYSTICK_INT_BIT |
+	                             portNVIC_SYSTICK_ENABLE_BIT);
+}
+
+
+/*==========中断服务函数=============*/
+void xPortSysTickHandler(void)
+{
+	/*关中断*/
+	vPortRaiseBASEPRI();
+	
+	/*更新系统时基*/
+	xTaskIncrementTick();
+	
+	/*开中断*/
+	vPortClearBASEPRIFromISR();
+}
+
+
+
+
+
+
+
+
 
 
 

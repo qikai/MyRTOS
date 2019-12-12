@@ -3,7 +3,7 @@
 
 #include "stdint.h" 
 #include "stddef.h" 
- 
+#include "myRTOSConfig.h"
  
 /* 数据类型重定义 */ 
 #define portCHAR    char 
@@ -27,6 +27,9 @@ typedef uint32_t TickType_t;
 #endif 
 
 
+#ifndef portFORCE_INLINE
+	#define portFORCE_INLINE __forceinline
+#endif
 /*
 中断控制状态寄存器：0xe000ed04
 BIT 28 PENDSVSET:PendSV 悬起位
@@ -50,7 +53,60 @@ BIT 28 PENDSVSET:PendSV 悬起位
 	__isb( portSY_FULL_READ_WRITE );                      \
 }
 
+/*不带返回值的关中断函数，不能嵌套，不能在中断里面使用*/
+#define portDISABLE_INTERRUPTS() vPortRaiseBASEPRI()
 
+static portFORCE_INLINE void vPortRaiseBASEPRI( void )
+{
+	uint32_t ulNewBASEPRI = configMAX_SYSCALL_INTERRUPT_PRIORITY;
+	__asm
+  {
+		msr basepri, ulNewBASEPRI
+		dsb
+		isb
+	}
+	
+}
 
+/*带返回值的关中断函数，可以嵌套，可以在中断里面使用*/
+#define portSET_INTERRUPT_MASK_FROM_ISR() ulPortRaiseBASEPRI()
+static portFORCE_INLINE uint32_t ulPortRaiseBASEPRI( void )
+{
+	uint32_t ulReturn, ulNewBASEPRI = configMAX_SYSCALL_INTERRUPT_PRIORITY;
+	
+	__asm
+	{
+		mrs ulReturn, basepri
+		msr basepri, ulNewBASEPRI
+		dsb
+		isb
+	}
+	return ulReturn;
+}
+
+/*不带中断保护的开中断函数*/
+#define portENABLE_INTERRUPTS() vPortSetBASEPRI( 0 )
+
+/*带中断保护的开中断函数*/
+#define portCLEAR_INTERRUPT_MASK_FROM_ISR(x) vPOrtSetBASEPRI(x)
+
+static portFORCE_INLINE void vPortSetBASEPRI(uint32_t ulBASEPRI)
+{
+	__asm
+	{
+		msr basepri, ulBASEPRI
+	}
+}
+
+static portFORCE_INLINE void vPortClearBASEPRIFromISR( void )
+{
+	__asm
+	{
+		/* Set BASEPRI to 0 so no interrupts are masked.  This function is only
+		used to lower the mask in an interrupt, so memory barriers are not 
+		used. */
+		msr basepri, #0
+	}
+}
 
 #endif

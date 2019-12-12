@@ -40,6 +40,10 @@ typedef struct xLIST
 /*
 	节点带参宏函数
 */
+
+#define listGET_OWNER_OF_HEAD_ENTRY( pxList )\
+        ( ( &( ( pxList )->xListend ) )->pxNext->pvOwner )
+
 /*初始化节点拥有者*/
 #define listSET_LIST_ITEM_OWNER( pxListItem, pxOwner )\
 				( ( pxListItem )->pvOwner = ( void * ) ( pxOwner ) )
@@ -57,7 +61,7 @@ typedef struct xLIST
 				( ( pxListItem )->xItemValue )
 				
 /*获取链表根节点的节点计数器的值*/
-#define listGET_ITEM_VALUE_OF_HEAT_ENTRY( pxList )\
+#define listGET_ITEM_VALUE_OF_HEAD_ENTRY( pxList )\
         ( ( ( pxList)->xListEnd ).pxNext->xItemValue )				
 
 /*获取链表的入口节点*/
