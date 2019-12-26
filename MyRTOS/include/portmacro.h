@@ -40,6 +40,19 @@ BIT 28 PENDSVSET:PendSV 悬起位
 #define portSY_FULL_READ_WRITE   ( 15 )
 
 
+#define portRECORD_READY_PRIORITY( uxPriority, uxReadyPriorities )\
+          ( uxReadyPriorities ) |= ( 1UL << ( uxPriority ))
+
+#define portRESET_READY_PRIORITY( uxPriority, uxReadyPriorities )\
+          ( uxReadyPriorities ) &= ~( 1UL << ( uxPriority ) )
+
+
+#define portGET_HIGHEST_PRIORITY( uxTopPriority, uxReadyPriorities)\
+          uxTopPriority = ( 31UL - ( uint32_t) __clz( ( uxReadyPriorities ) ) )
+
+#define portENTER_CRITICAL()    vPortEnterCritical() 
+#define portEXIT_CRITICAL()     vPortExitCritical()
+
 /*
 ：portYIELD 的实现很简单，实际就是将 PendSV 的悬起位置 1，当
 没有其它中断运行的时候响应 PendSV 中断，去执行我们写好的 PendSV 

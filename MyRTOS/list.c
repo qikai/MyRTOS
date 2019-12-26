@@ -18,17 +18,17 @@ void vListInitialiseItem( ListItem_t * const pxItem )
 void vListInitialise(List_t * const pxList)
 {
 	/*将链表索引指针指向最后一个节点*/
-	pxList->pxIndex = ( ListItem_t * ) &(pxList->xListend);
+	pxList->pxIndex = ( ListItem_t * ) &(pxList->xListEnd);
 
 	/*将链表最后一个节点的辅助排序的值设置为最大，确保该节点就是链表的最后节点*/
-	pxList->xListend.xItemvalue = portMAX_DELAY;
+	pxList->xListEnd.xItemvalue = portMAX_DELAY;
 	
 	
   /*将最后一个节点的pxNext和pxPrevious指针均指向节点自身，表示链表为空*/
-	pxList->xListend.pxNext = (ListItem_t * ) &(pxList->xListend);
+	pxList->xListEnd.pxNext = (ListItem_t * ) &(pxList->xListEnd);
 
   /**/
-  pxList->xListend.pxPrevious = (ListItem_t *) &(pxList->xListend);
+  pxList->xListEnd.pxPrevious = (ListItem_t *) &(pxList->xListEnd);
 	
 	/*初始化链表节点计数器的值为0，表示链表为空*/
 	pxList->uxNumberOfItems = ( UBaseType_t) 0U;
@@ -70,11 +70,11 @@ void vListInsert( List_t * const pxList, ListItem_t * const pxNewListItem )
 	/*寻找节点要插入的位置*/
 	if( xValueOfInsertion == portMAX_DELAY)
 	{
-		pxIterator = pxList->xListend.pxPrevious;
+		pxIterator = pxList->xListEnd.pxPrevious;
 	}
 	else
 	{
-		for(pxIterator = (ListItem_t  * ) &( pxList->xListend ); pxIterator->pxNext->xItemValue <= xValueOfInsertion; pxIterator = pxIterator->pxNext)
+		for(pxIterator = (ListItem_t  * ) &( pxList->xListEnd ); pxIterator->pxNext->xItemValue <= xValueOfInsertion; pxIterator = pxIterator->pxNext)
 		{
 			//迭代找到节点要插入的位置
 		}

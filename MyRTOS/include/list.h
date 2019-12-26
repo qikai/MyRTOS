@@ -31,7 +31,7 @@ typedef struct xLIST
 {
 	UBaseType_t uxNumberOfItems;					        /*链表节点计数器，用于表示该链表下有多少个节点，根节点除外*/
 	ListItem_t * pxIndex;									        /*链表节点索引指针*/
-	MiniListItem_t xListend;							        /*链表最后一个节点 也就是第一个节点*/
+	MiniListItem_t xListEnd;							        /*链表最后一个节点 也就是第一个节点*/
 }List_t;
 
 
@@ -42,7 +42,7 @@ typedef struct xLIST
 */
 
 #define listGET_OWNER_OF_HEAD_ENTRY( pxList )\
-        ( ( &( ( pxList )->xListend ) )->pxNext->pvOwner )
+        ( ( &( ( pxList )->xListEnd ) )->pxNext->pvOwner )
 
 /*初始化节点拥有者*/
 #define listSET_LIST_ITEM_OWNER( pxListItem, pxOwner )\

@@ -1,5 +1,6 @@
 #include "portable.h"
 #include "myRTOSConfig.h"
+#include "task.h"
 
 #define portINITIAL_XPSR					(0x01000000)
 #define portSTART_ADDRESS_MASK    ( ( StackType_t ) 0xfffffffeUL)
@@ -191,7 +192,7 @@ __asm void xPortPendSVHandler(void)
 
 
 /*===========进入临界段，不带中断保护，不能嵌套=====================*/
-void vPortEnnterCritical( void )
+void vPortEnterCritical( void )
 {
 	portDISABLE_INTERRUPTS();
 	uxCriticalNesting++;
@@ -255,7 +256,11 @@ void xPortSysTickHandler(void)
 	vPortRaiseBASEPRI();
 	
 	/*更新系统时基*/
-	xTaskIncrementTick();
+	if(xTaskIncrementTick() != pdFALSE)
+	{
+		/* 任务切换，触发PendSV */
+		taskYIELD();
+	}
 	
 	/*开中断*/
 	vPortClearBASEPRIFromISR();
